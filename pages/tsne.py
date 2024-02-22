@@ -10,6 +10,17 @@ from sklearn.manifold import TSNE
 
 dash.register_page(__name__)
 
+rs = 0
+n_components = 2
+perplexity = 30
+n_iter = 10000
+learning_rate = 200
+n_iter_without_progress = 300
+verbose = 1
+method = 'exact'
+init = 'pca'
+early_exaggeration = 25
+
 
 # Definir el layout de la aplicación
 layout = dbc.Container([
@@ -144,7 +155,9 @@ def update_y_hist(hoverData, yaxis_column_name, storeData):
     return fig
 
 def perform_tsne(df):
-    tsne = TSNE(n_components=2, random_state=0, perplexity=30, n_iter=5000, learning_rate=200,  n_iter_without_progress=300, verbose=1, method='exact', init='pca',early_exaggeration=15)
+    tsne = TSNE(n_components = n_components, random_state = rs, perplexity = perplexity, n_iter = n_iter, learning_rate = learning_rate, verbose = verbose,  
+                n_iter_without_progress=n_iter_without_progress, method = method, init = init, early_exaggeration = early_exaggeration)
+    
     df_dropped = df.drop([df.columns[0], df.columns[-1]], axis=1)
     tsne_result = tsne.fit_transform(df_dropped)
     tsne_df = pd.DataFrame(tsne_result, columns=['t-SNE Component 1', 't-SNE Component 2'])

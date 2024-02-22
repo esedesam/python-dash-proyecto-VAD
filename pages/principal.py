@@ -9,15 +9,12 @@ from dash import Dash, dcc, html, Input, Output, callback
 
 dash.register_page(__name__)
 
-
 # Definir el layout de la aplicación
 layout = dbc.Container([
     html.Div([
         html.Div([
             dcc.Dropdown(
                 id='crossfilter-xaxis-column',
-                # options=[{'label': i, 'value': i} for i in available_indicators],
-                # value=available_indicators[0],
                 style={"margin-bottom": "5px"}),
             dcc.RadioItems(
                 id='crossfilter-xaxis-type',
@@ -28,8 +25,6 @@ layout = dbc.Container([
         html.Div([
             dcc.Dropdown(
                 id='crossfilter-yaxis-column',
-                # options=[{'label': i, 'value': i} for i in available_indicators],
-                # value=available_indicators[1],
                 style={"margin-bottom": "5px"}),
             dcc.RadioItems(
                 id='crossfilter-yaxis-type',
@@ -50,17 +45,27 @@ layout = dbc.Container([
         dcc.Graph(id='x-hist'),
         dcc.Graph(id='y-hist')],
         style={'display': 'inline-block', 'width': '49%', 'padding': '5px 5px'}),
-    ]
-    ,fluid = True
-)
+    html.Div([
+    html.H6("Filtrado de EDAD"),
+    dcc.RangeSlider(
+        id='age-slider',
+        marks={i: str(i) for i in range(0, 101, 10)},
+        min=0,
+        max=100,
+        step=1,
+        value=[0, 100],
+        allowCross=False
+    )
+], style={'width': '50%', 'float': 'left'}),
+], fluid=True)
 
 # Interacción de store-data -> rehacer dropdowns
 @callback(
-        Output('crossfilter-xaxis-column', 'options'),
-        Output('crossfilter-xaxis-column', 'value'),
-        Output('crossfilter-yaxis-column', 'options'),
-        Output('crossfilter-yaxis-column', 'value'),
-        Input('store', 'data'))
+    Output('crossfilter-xaxis-column', 'options'),
+    Output('crossfilter-xaxis-column', 'value'),
+    Output('crossfilter-yaxis-column', 'options'),
+    Output('crossfilter-yaxis-column', 'value'),
+    Input('store', 'data'))
 def updateColDropdown(storeData):
     if 'data' in storeData and not storeData['data'] == {}:
         newOptions = list(storeData['data'].keys())[1:]
@@ -75,12 +80,15 @@ def updateColDropdown(storeData):
     Input('crossfilter-yaxis-column', 'value'),
     Input('crossfilter-xaxis-type', 'value'),
     Input('crossfilter-yaxis-type', 'value'),
-    Input('store', 'data'))
-def update_graph(xaxis_column_name, yaxis_column_name, xaxis_type, yaxis_type, storeData):
+    Input('store', 'data'),
+    Input('age-slider', 'value'))
+def update_graph(xaxis_column_name, yaxis_column_name, xaxis_type, yaxis_type, storeData, age_range):
     if 'data' in storeData and not storeData['data'] == {}:
         df = pd.DataFrame.from_dict(storeData['data'])
+        # Filtrar según el rango de edad seleccionado
+        df_filtered = df[(df['EDAD'] >= age_range[0]) & (df['EDAD'] <= age_range[1])]
         fig = px.scatter(
-            df,
+            df_filtered,
             x=xaxis_column_name,
             y=yaxis_column_name,
             log_x=(xaxis_type == 'Log'),
@@ -105,9 +113,10 @@ def create_hist(df, xaxis_column_name, axis_type, nBins=10, patient=None, patien
         template="ggplot2")
     fig.update_traces(xbins={
         'start': binEdges[0],
-        'end': binEdges[-1],
+        'end': binEdges[-1] * 1.01, # con este factor multiplicativo aparece alguna cosa que estaba al límite, aunque no sale del todo bien las cosas y no creo que sea general para cualquier variable
         'size': binEdges[1] - binEdges[0]})
-    fig.update_xaxes(range=(binEdges[0], binEdges[-1]))
+    max_x_value = binEdges[-1] * 1.01    
+    fig.update_xaxes(range=(binEdges[0], max_x_value))
 
     if not patient is None:
         pacientXValue = df[df[patientsColName] == patient][xaxis_column_name].values[0]
@@ -125,21 +134,6 @@ def create_hist(df, xaxis_column_name, axis_type, nBins=10, patient=None, patien
             line={'width': 1},
             fillcolor='red',
             opacity=1)
-        # fig.add_vline(
-        #     x = pacientXValue,
-        #     line_width = 1,
-        #     line_dash = 'dash',
-        #     opacity = 1,
-        #     label={
-        #         'text': patient,
-        #         'textposition': 'end',
-        #         'font': {
-        #             'size': 18,
-        #             'color': 'black'},
-        #         'yanchor': 'top',
-        #         'xanchor': 'left',
-        #         'textangle': 0})
-        
     fig.update_layout(
         margin={'l': 5, 'r': 5, 't': 20, 'b': 5})
     return fig
@@ -168,4 +162,3 @@ def update_y_hist(hoverData, yaxis_column_name, axis_type, storeData):
     df = pd.DataFrame.from_dict(storeData['data'])
     fig = create_hist(df, yaxis_column_name, axis_type, patient=patient)
     return fig
-
