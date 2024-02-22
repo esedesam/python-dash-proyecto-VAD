@@ -14,12 +14,6 @@ app = dash.Dash(__name__, use_pages=True, external_stylesheets=[dbc.themes.SPACE
 
 # print(dash.page_registry.keys())
 
-df = pd.read_csv('./data/Arritmias.csv')
-available_indicators = df.columns[1:]
-
-cols = df.columns[1:-4]
-for i in range(len(cols)):
-      df[cols[i]] = df[cols[i]].str.replace(",", ".").astype(float)
 
 # 3 - Creamos las secciones del html con sus componentes (dcc)
 

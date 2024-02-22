@@ -16,7 +16,8 @@ layout = html.Div([
         id='upload-data',
         children=html.Div([
             'Drag and Drop or ',
-            html.A('Select Files')
+             html.A('Select Files'),
+            '. Just .csv or .xls files are accepted.'
         ]),
         filename = None,
         style={
@@ -50,11 +51,13 @@ def parse_contents(contents, fileName, date, storeData):
                 cols = df.columns[1:-4]
                 for col in cols:
                     df[col] = df[col].str.replace(",", ".").astype(float)
+                    
                 message = html.Div("Hola, viejo conocido mío. Conozco tu preprocesamiento.")
         elif 'xls' in fileName:
             df = pd.read_excel(io.BytesIO(decoded))
         else:
             raise PreventUpdate
+            
         
         storeData['data'] = df.to_dict()
         storeData['metaData'] = {
@@ -65,6 +68,7 @@ def parse_contents(contents, fileName, date, storeData):
         raise PreventUpdate
 
     df = pd.DataFrame.from_dict(storeData['data'])
+    
     # Mostrar solo las primeras 10 filas del DataFrame
     df_head = df.head(10)
 
