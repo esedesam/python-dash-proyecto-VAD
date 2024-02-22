@@ -62,41 +62,45 @@ layout = dbc.Container([
 
 # Interacción de store-data -> rehacer dropdowns
 @callback(
-        [Output('crossfilter-xaxis-column', 'options'),
-         Output('crossfilter-xaxis-column', 'value'),
-         Output('crossfilter-yaxis-column', 'options'),
-         Output('crossfilter-yaxis-column', 'value')],
+        Output('crossfilter-xaxis-column', 'options'),
+        Output('crossfilter-xaxis-column', 'value'),
+        Output('crossfilter-yaxis-column', 'options'),
+        Output('crossfilter-yaxis-column', 'value'),
         Input('store', 'data'))
-def updateColDropdown(store):
-    if store == {}:
-        newOptions = []
+def updateColDropdown(storeData):
+    if 'data' in storeData and not storeData['data'] == {}:
+        newOptions = list(storeData['data'].keys())[1:]
     else:
-        newOptions = list(store.keys())[1:]
-    print(f'Nuevas opciones: {newOptions}')
+        newOptions = []
     return newOptions, newOptions[0], newOptions, newOptions[1]
 
 # Interacción de menús y slider -> rehacer scatter
 @callback(
     Output('crossfilter-indicator-scatter', 'figure'),
-    [Input('crossfilter-xaxis-column', 'value'),
-     Input('crossfilter-yaxis-column', 'value'),
-     Input('crossfilter-xaxis-type', 'value'),
-     Input('crossfilter-yaxis-type', 'value')])
-def update_graph(xaxis_column_name, yaxis_column_name, xaxis_type, yaxis_type):
-    fig = px.scatter(
-        df,
-        x=xaxis_column_name,
-        y=yaxis_column_name,
-        log_x=(xaxis_type == 'Log'),
-        log_y=(yaxis_type == 'Log'),
-        height=500,
-        template="ggplot2",
-        hover_name='PACIENTES',
-        hover_data=df.columns[1:].tolist())
+    Input('crossfilter-xaxis-column', 'value'),
+    Input('crossfilter-yaxis-column', 'value'),
+    Input('crossfilter-xaxis-type', 'value'),
+    Input('crossfilter-yaxis-type', 'value'),
+    Input('store', 'data'))
+def update_graph(xaxis_column_name, yaxis_column_name, xaxis_type, yaxis_type, storeData):
+    if 'data' in storeData and not storeData['data'] == {}:
+        df = pd.DataFrame.from_dict(storeData['data'])
+        fig = px.scatter(
+            df,
+            x=xaxis_column_name,
+            y=yaxis_column_name,
+            log_x=(xaxis_type == 'Log'),
+            log_y=(yaxis_type == 'Log'),
+            height=500,
+            template="ggplot2",
+            hover_name='PACIENTES',
+            hover_data=df.columns[1:].tolist())
+    else:
+        fig = px.scatter()
     return fig
 
 # Función para crear histograma
-def create_hist(df, xaxis_column_name, axis_type, nBins=10, patient='', patientsColName='PACIENTES'):
+def create_hist(df, xaxis_column_name, axis_type, nBins=10, patient=None, patientsColName='PACIENTES'):
     binValues, binEdges = np.histogram(df[xaxis_column_name].values, bins=nBins)
     fig = px.histogram(
         df,
@@ -111,21 +115,37 @@ def create_hist(df, xaxis_column_name, axis_type, nBins=10, patient='', patients
         'size': binEdges[1] - binEdges[0]})
     fig.update_xaxes(range=(binEdges[0], binEdges[-1]))
 
-    pacientXValue = df[df[patientsColName] == patient][xaxis_column_name].values[0]
-    endEdgeIdx = np.searchsorted(binEdges, pacientXValue)
-    if endEdgeIdx == 0:
-        endEdgeIdx = 1
-    startBinEdge, endBinEdge = binEdges[endEdgeIdx - 1], binEdges[endEdgeIdx]
-    binHeight = binValues[endEdgeIdx - 1]
-    fig.add_shape(
-        type='rect',
-        x0=startBinEdge,
-        y0=0,
-        x1=endBinEdge,
-        y1=binHeight,
-        line={'width': 1},
-        fillcolor='red',
-        opacity=1)
+    if not patient is None:
+        pacientXValue = df[df[patientsColName] == patient][xaxis_column_name].values[0]
+        endEdgeIdx = np.searchsorted(binEdges, pacientXValue)
+        if endEdgeIdx == 0:
+            endEdgeIdx = 1
+        startBinEdge, endBinEdge = binEdges[endEdgeIdx - 1], binEdges[endEdgeIdx]
+        binHeight = binValues[endEdgeIdx - 1]
+        fig.add_shape(
+            type='rect',
+            x0=startBinEdge,
+            y0=0,
+            x1=endBinEdge,
+            y1=binHeight,
+            line={'width': 1},
+            fillcolor='red',
+            opacity=1)
+        # fig.add_vline(
+        #     x = pacientXValue,
+        #     line_width = 1,
+        #     line_dash = 'dash',
+        #     opacity = 1,
+        #     label={
+        #         'text': patient,
+        #         'textposition': 'end',
+        #         'font': {
+        #             'size': 18,
+        #             'color': 'black'},
+        #         'yanchor': 'top',
+        #         'xanchor': 'left',
+        #         'textangle': 0})
+        
     fig.update_layout(
         margin={'l': 5, 'r': 5, 't': 20, 'b': 5})
     return fig
@@ -133,21 +153,25 @@ def create_hist(df, xaxis_column_name, axis_type, nBins=10, patient='', patients
 # Interacción de hoverData o menús -> rehacer series 
 @callback(
     Output('x-hist', 'figure'),
-    [Input('crossfilter-indicator-scatter', 'hoverData'),
-     Input('crossfilter-xaxis-column', 'value'),
-     Input('crossfilter-xaxis-type', 'value')])
-def update_x_hist(hoverData, xaxis_column_name, axis_type):
+    Input('crossfilter-indicator-scatter', 'hoverData'),
+    Input('crossfilter-xaxis-column', 'value'),
+    Input('crossfilter-xaxis-type', 'value'),
+    Input('store', 'data'))
+def update_x_hist(hoverData, xaxis_column_name, axis_type, storeData):
     patient = hoverData['points'][0]['hovertext']
+    df = pd.DataFrame.from_dict(storeData['data'])
     fig = create_hist(df, xaxis_column_name, axis_type, patient=patient)
     return fig
 
 @callback(
     Output('y-hist', 'figure'),
-    [Input('crossfilter-indicator-scatter', 'hoverData'),
-     Input('crossfilter-yaxis-column', 'value'),
-     Input('crossfilter-yaxis-type', 'value')])
-def update_y_hist(hoverData, yaxis_column_name, axis_type):
+    Input('crossfilter-indicator-scatter', 'hoverData'),
+    Input('crossfilter-yaxis-column', 'value'),
+    Input('crossfilter-yaxis-type', 'value'),
+    Input('store', 'data'))
+def update_y_hist(hoverData, yaxis_column_name, axis_type, storeData):
     patient = hoverData['points'][0]['hovertext']
+    df = pd.DataFrame.from_dict(storeData['data'])
     fig = create_hist(df, yaxis_column_name, axis_type, patient=patient)
     return fig
 
