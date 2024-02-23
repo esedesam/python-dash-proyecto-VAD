@@ -102,8 +102,8 @@ def update_graph(xaxis_column_name, yaxis_column_name, xaxis_type, yaxis_type, s
     return fig
 
 # Función para crear histograma
-def create_hist(df, xaxis_column_name, axis_type, nBins=10, patient=None, patientsColName='PACIENTES'):
-    binValues, binEdges = np.histogram(df[xaxis_column_name].values, bins=nBins)
+def create_hist(df, xaxis_column_name, axis_type, age_range, hoverData, nBins=10, patientsColName='PACIENTES'):
+    df = df[(df['EDAD'] >= age_range[0]) & (df['EDAD'] <= age_range[1])]
     fig = px.histogram(
         df,
         x=xaxis_column_name,
@@ -111,31 +111,53 @@ def create_hist(df, xaxis_column_name, axis_type, nBins=10, patient=None, patien
         hover_data=df.columns,
         height=250,
         template="ggplot2")
-    fig.update_traces(xbins={
-        'start': binEdges[0],
-        'end': binEdges[-1] * 1.01, # con este factor multiplicativo aparece alguna cosa que estaba al límite, aunque no sale del todo bien las cosas y no creo que sea general para cualquier variable
-        'size': binEdges[1] - binEdges[0]})
-    max_x_value = binEdges[-1] * 1.01    
-    fig.update_xaxes(range=(binEdges[0], max_x_value))
+    # Descomentar para resaltar en el histograma (junto con lo de un poco más abajo)
+    # binValues, binEdges = np.histogram(df[xaxis_column_name].values, bins=nBins)
+    # fig.update_traces(xbins={
+    #     'start': binEdges[0],
+    #     'end': binEdges[-1] * 1.01, # con este factor multiplicativo aparece alguna cosa que estaba al límite, aunque no sale del todo bien las cosas y no creo que sea general para cualquier variable
+    #     'size': binEdges[1] - binEdges[0]})
+    # max_x_value = binEdges[-1] * 1.01    
+    # fig.update_xaxes(range=(binEdges[0], max_x_value))
 
-    if not patient is None:
+    try:
+        patient = hoverData['points'][0]['hovertext']
         pacientXValue = df[df[patientsColName] == patient][xaxis_column_name].values[0]
-        endEdgeIdx = np.searchsorted(binEdges, pacientXValue)
-        if endEdgeIdx == 0:
-            endEdgeIdx = 1
-        startBinEdge, endBinEdge = binEdges[endEdgeIdx - 1], binEdges[endEdgeIdx]
-        binHeight = binValues[endEdgeIdx - 1]
-        fig.add_shape(
-            type='rect',
-            x0=startBinEdge,
-            y0=0,
-            x1=endBinEdge,
-            y1=binHeight,
-            line={'width': 1},
-            fillcolor='red',
-            opacity=1)
+    except:
+        patient = None
+    else:
+        # Descomentar para resaltar en el histograma
+        # endEdgeIdx = np.searchsorted(binEdges, pacientXValue)
+        # if endEdgeIdx == 0:
+        #     endEdgeIdx = 1
+        # startBinEdge, endBinEdge = binEdges[endEdgeIdx - 1], binEdges[endEdgeIdx]
+        # binHeight = binValues[endEdgeIdx - 1]
+        # fig.add_shape(
+        #     type='rect',
+        #     x0=startBinEdge,
+        #     y0=0,
+        #     x1=endBinEdge,
+        #     y1=binHeight,
+        #     line={'width': 1},
+        #     fillcolor='red',
+        #     opacity=1)
+        fig.add_vline(
+            x = pacientXValue,
+            line_width = 1,
+            line_dash = 'dash',
+            opacity = 1,
+            label={
+                'text': patient,
+                'textposition': 'end',
+                'font': {
+                    'size': 18,
+                    'color': 'black'},
+                'yanchor': 'top',
+                'xanchor': 'left',
+                'textangle': 0})
     fig.update_layout(
         margin={'l': 5, 'r': 5, 't': 20, 'b': 5})
+    
     return fig
 
 # Interacción de hoverData o menús -> rehacer series 
@@ -144,11 +166,11 @@ def create_hist(df, xaxis_column_name, axis_type, nBins=10, patient=None, patien
     Input('crossfilter-indicator-scatter', 'hoverData'),
     Input('crossfilter-xaxis-column', 'value'),
     Input('crossfilter-xaxis-type', 'value'),
-    Input('store', 'data'))
-def update_x_hist(hoverData, xaxis_column_name, axis_type, storeData):
-    patient = hoverData['points'][0]['hovertext']
+    Input('store', 'data'),
+    Input('age-slider', 'value'))
+def update_x_hist(hoverData, xaxis_column_name, axis_type, storeData, age_range):
     df = pd.DataFrame.from_dict(storeData['data'])
-    fig = create_hist(df, xaxis_column_name, axis_type, patient=patient)
+    fig = create_hist(df, xaxis_column_name, axis_type, age_range, hoverData)
     return fig
 
 @callback(
@@ -156,9 +178,9 @@ def update_x_hist(hoverData, xaxis_column_name, axis_type, storeData):
     Input('crossfilter-indicator-scatter', 'hoverData'),
     Input('crossfilter-yaxis-column', 'value'),
     Input('crossfilter-yaxis-type', 'value'),
-    Input('store', 'data'))
-def update_y_hist(hoverData, yaxis_column_name, axis_type, storeData):
-    patient = hoverData['points'][0]['hovertext']
+    Input('store', 'data'),
+    Input('age-slider', 'value'))
+def update_y_hist(hoverData, yaxis_column_name, axis_type, storeData, age_range):
     df = pd.DataFrame.from_dict(storeData['data'])
-    fig = create_hist(df, yaxis_column_name, axis_type, patient=patient)
+    fig = create_hist(df, yaxis_column_name, axis_type, age_range, hoverData)
     return fig
