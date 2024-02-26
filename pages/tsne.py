@@ -7,6 +7,8 @@ import plotly.express as px
 import numpy as np
 from dash import Dash, dcc, html, Input, Output, callback
 from sklearn.manifold import TSNE
+from io import StringIO
+import sys
 
 dash.register_page(__name__)
 
@@ -45,13 +47,11 @@ layout = dbc.Container([
             hoverData={'points': [{'hovertext': 'P1'}]})],
         style={'display': 'inline-block', 'width': '49%', 'padding': '5px 5px'}),
     html.Div([
-        dcc.Graph(id='x-hist2')],
-        style={'display': 'inline-block', 'width': '49%', 'padding': '5px 5px'}),
-    html.Div([
+        dcc.Graph(id='x-hist2'),
         dcc.Graph(id='y-hist2')],
-        style={'display': 'inline-block', 'width': '49%', 'padding': '5px 5px'}),
-    ]
-    , fluid=True
+        style={'display': 'inline-block', 'width': '49%', 'padding': '5px 5px'})
+    ],
+    fluid=True
 )
 
 # Interacción de store-data -> rehacer dropdowns
@@ -155,6 +155,7 @@ def update_y_hist(hoverData, yaxis_column_name, storeData):
     return fig
 
 def perform_tsne(df):
+
     tsne = TSNE(n_components = n_components, random_state = rs, perplexity = perplexity, n_iter = n_iter, learning_rate = learning_rate, verbose = verbose,  
                 n_iter_without_progress=n_iter_without_progress, method = method, init = init, early_exaggeration = early_exaggeration)
     
@@ -162,6 +163,5 @@ def perform_tsne(df):
     tsne_result = tsne.fit_transform(df_dropped)
     tsne_df = pd.DataFrame(tsne_result, columns=['t-SNE Component 1', 't-SNE Component 2'])
     tsne_df['AV'] = df['AV'].values # para asignar vector y no otro dataframe
-    
     
     return tsne_df
