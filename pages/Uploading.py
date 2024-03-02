@@ -9,7 +9,7 @@ import datetime
 import base64
 
 # Crear la aplicación Dash
-dash.register_page(__name__, path='/')
+dash.register_page(__name__, path='/', order = 1) # lo del path es para que se abra esa primero
 
 layout = html.Div([
     dcc.Upload(
@@ -52,7 +52,7 @@ def parse_contents(contents, fileName, date, storeData):
                 for col in cols:
                     df[col] = df[col].str.replace(",", ".").astype(float)
                     
-                message = html.Div("Hola, viejo conocido mío. Conozco tu preprocesamiento.")
+                message = html.Div("Preprocessing applied to the known dataset.")
         elif 'xls' in fileName:
             df = pd.read_excel(io.BytesIO(decoded))
         else:
@@ -79,6 +79,8 @@ def parse_contents(contents, fileName, date, storeData):
         message,  # Agregar el mensaje aquí
         html.Hr(),
         
+        html.P("The DataTable can be modified: its values will be reflected in this same session.", style={'text-align': 'center', 'color': 'blue', 'font-weight': 'bold'}),
+        
         # Configuración de la tabla interactiva
         dash_table.DataTable(
             id = 'dataTableDisplay',
@@ -102,6 +104,9 @@ def parse_contents(contents, fileName, date, storeData):
         Input('dataTableDisplay', 'data'),
         State('output-data-upload', 'children'),
         prevent_initial_call=True)
+
+# Tabla editable y guardado en esa sesión
+
 def update_output(content, fileName, date, storeData, rows, tableDiv):
     triggeredId = dash.callback_context.triggered[0]['prop_id'].split('.')[0]
     if triggeredId in ['upload-data', 'store']:

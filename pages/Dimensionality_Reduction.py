@@ -10,8 +10,9 @@ from sklearn.decomposition import PCA
 from io import StringIO
 import sys
 
-dash.register_page(__name__)
+dash.register_page(__name__, order = 3)
 
+# valores defecto tsne
 rs = 0
 n_components = 2
 n_iter = 3000
@@ -147,11 +148,20 @@ def generate_pca_scatter(storeData, n_components):
         template="ggplot2",
         hover_name=df[df.columns[0]],
         color='AV')
+
+    fig.update_layout(
+        title={
+            'text': f"PCA Scatter Plot",  # Título con la KL divergence
+            'y':0.95,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'})
+    
     return fig
 
 def generate_tsne_scatter(storeData, perplexity_value=30, learning_rate_value=200, init='pca', early_exaggeration=30):
     df = pd.DataFrame.from_dict(storeData['data'])
-    df_tsne = perform_tsne(df, perplexity_value, learning_rate_value, init, early_exaggeration)
+    df_tsne, div = perform_tsne(df, perplexity_value, learning_rate_value, init, early_exaggeration)
     df_tsne['AV'] = df_tsne['AV'].astype(str)
     
     fig = px.scatter(
@@ -162,6 +172,15 @@ def generate_tsne_scatter(storeData, perplexity_value=30, learning_rate_value=20
         template="ggplot2",
         hover_name=df[df.columns[0]],
         color='AV')
+    
+    fig.update_layout(
+        title={
+            'text': f"t-SNE Scatter Plot (KL divergence: {div:.2f})",  # Título con la KL divergence
+            'y':0.95,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'})
+    
     return fig
 
 def perform_tsne(df, perplexity_value=30, learning_rate_value=200, init='pca', early_exaggeration=30):
@@ -174,7 +193,9 @@ def perform_tsne(df, perplexity_value=30, learning_rate_value=200, init='pca', e
     tsne_result = tsne.fit_transform(df_dropped)
     tsne_df = pd.DataFrame(tsne_result, columns=['t-SNE Component 1', 't-SNE Component 2'])
     tsne_df['AV'] = df['AV'].values
-    return tsne_df
+    
+    div = tsne.kl_divergence_
+    return tsne_df, div
 
 def create_hist(df, xaxis_column_name, nBins=10, patient=None, patientsColName='PACIENTES'):
     binValues, binEdges = np.histogram(df[xaxis_column_name].values, bins=nBins)

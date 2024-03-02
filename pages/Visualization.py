@@ -7,9 +7,10 @@ import plotly.express as px
 import numpy as np
 from dash import Dash, dcc, html, Input, Output, callback
 
-dash.register_page(__name__)
+dash.register_page(__name__, order = 2)
 
 # Definir el layout de la aplicación
+
 layout = dbc.Container([
     html.Div([
         html.Div([
@@ -46,7 +47,7 @@ layout = dbc.Container([
         dcc.Graph(id='y-hist')],
         style={'display': 'inline-block', 'width': '49%', 'padding': '5px 5px'}),
     html.Div([
-    html.H6("Filtrado de EDAD"),
+    html.H6("Filtering by EDAD"),
     dcc.RangeSlider(
         id='age-slider',
         marks={i: str(i) for i in range(0, 101, 10)},
@@ -82,6 +83,9 @@ def updateColDropdown(storeData):
     Input('crossfilter-yaxis-type', 'value'),
     Input('store', 'data'),
     Input('age-slider', 'value'))
+
+# actualizar gráfico según se mueve el slider de filtrado por la variable EDAD
+
 def update_graph(xaxis_column_name, yaxis_column_name, xaxis_type, yaxis_type, storeData, age_range):
     if 'data' in storeData and not storeData['data'] == {}:
         df = pd.DataFrame.from_dict(storeData['data'])
@@ -97,6 +101,14 @@ def update_graph(xaxis_column_name, yaxis_column_name, xaxis_type, yaxis_type, s
             template="ggplot2",
             hover_name='PACIENTES',
             hover_data=df.columns[1:].tolist())
+        
+        fig.update_layout(
+        title={
+            'text': f"Scatter Plot of selected variables",  # Título con la KL divergence
+            'y':0.95,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'})
     else:
         fig = px.scatter()
     return fig
@@ -111,6 +123,7 @@ def create_hist(df, xaxis_column_name, axis_type, age_range, hoverData, nBins=10
         hover_data=df.columns,
         height=250,
         template="ggplot2")
+    
     # Descomentar para resaltar en el histograma (junto con lo de un poco más abajo)
     # binValues, binEdges = np.histogram(df[xaxis_column_name].values, bins=nBins)
     # fig.update_traces(xbins={
@@ -126,6 +139,7 @@ def create_hist(df, xaxis_column_name, axis_type, age_range, hoverData, nBins=10
     except:
         patient = None
     else:
+        
         # Descomentar para resaltar en el histograma
         # endEdgeIdx = np.searchsorted(binEdges, pacientXValue)
         # if endEdgeIdx == 0:
@@ -161,6 +175,7 @@ def create_hist(df, xaxis_column_name, axis_type, age_range, hoverData, nBins=10
     return fig
 
 # Interacción de hoverData o menús -> rehacer series 
+
 @callback(
     Output('x-hist', 'figure'),
     Input('crossfilter-indicator-scatter', 'hoverData'),
