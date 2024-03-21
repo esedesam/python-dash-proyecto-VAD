@@ -1,0 +1,1 @@
+Para correr la aplicación debe ejecutarse app.py
